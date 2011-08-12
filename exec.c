@@ -112,7 +112,10 @@ static uint8_t *code_gen_ptr;
 int phys_ram_fd;
 static int in_migration;
 
-RAMList ram_list = { .blocks = QLIST_HEAD_INITIALIZER(ram_list.blocks) };
+RAMList ram_list = {
+    .blocks = QLIST_HEAD_INITIALIZER(ram_list.blocks),
+    .blocks_mru = QLIST_HEAD_INITIALIZER(ram_list.blocks_mru)
+};
 
 static MemoryRegion *system_memory;
 static MemoryRegion *system_io;
@@ -2578,6 +2581,7 @@ ram_addr_t qemu_ram_alloc_from_ptr(ram_addr_t size, void *host,
     new_block->length = size;
 
     QLIST_INSERT_HEAD(&ram_list.blocks, new_block, next);
+    QLIST_INSERT_HEAD(&ram_list.blocks_mru, new_block, next_mru);
 
     ram_list.phys_dirty = g_realloc(ram_list.phys_dirty,
                                        last_ram_offset() >> TARGET_PAGE_BITS);
@@ -2605,6 +2609,7 @@ void qemu_ram_free_from_ptr(ram_addr_t addr)
     QLIST_FOREACH(block, &ram_list.blocks, next) {
         if (addr == block->offset) {
             QLIST_REMOVE(block, next);
+            QLIST_REMOVE(block, next_mru);
             g_free(block);
             return;
         }
@@ -2618,6 +2623,7 @@ void qemu_ram_free(ram_addr_t addr)
     QLIST_FOREACH(block, &ram_list.blocks, next) {
         if (addr == block->offset) {
             QLIST_REMOVE(block, next);
+            QLIST_REMOVE(block, next_mru);
             if (block->flags & RAM_PREALLOC_MASK) {
                 ;
             } else if (mem_path) {
@@ -2723,12 +2729,12 @@ void *qemu_get_ram_ptr(ram_addr_t addr)
 {
     RAMBlock *block;
 
-    QLIST_FOREACH(block, &ram_list.blocks, next) {
+    QLIST_FOREACH(block, &ram_list.blocks_mru, next_mru) {
         if (addr - block->offset < block->length) {
             /* Move this entry to to start of the list.  */
             if (block != QLIST_FIRST(&ram_list.blocks)) {
-                QLIST_REMOVE(block, next);
-                QLIST_INSERT_HEAD(&ram_list.blocks, block, next);
+                QLIST_REMOVE(block, next_mru);
+                QLIST_INSERT_HEAD(&ram_list.blocks_mru, block, next_mru);
             }
             if (xen_enabled()) {
                 /* We need to check if the requested address is in the RAM
@@ -2823,7 +2829,7 @@ int qemu_ram_addr_from_host(void *ptr, ram_addr_t *ram_addr)
         return 0;
     }
 
-    QLIST_FOREACH(block, &ram_list.blocks, next) {
+    QLIST_FOREACH(block, &ram_list.blocks_mru, next_mru) {
         /* This case append when the block is not mapped. */
         if (block->host == NULL) {
             continue;
