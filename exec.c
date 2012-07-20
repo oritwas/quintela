@@ -2464,7 +2464,7 @@ static ram_addr_t find_ram_offset(ram_addr_t size)
     return offset;
 }
 
-static ram_addr_t last_ram_offset(void)
+ram_addr_t last_ram_offset(void)
 {
     RAMBlock *block;
     ram_addr_t last = 0;

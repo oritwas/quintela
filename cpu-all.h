@@ -517,6 +517,8 @@ extern int mem_prealloc;
 void dump_exec_info(FILE *f, fprintf_function cpu_fprintf);
 #endif /* !CONFIG_USER_ONLY */
 
+ram_addr_t last_ram_offset(void);
+
 int cpu_memory_rw_debug(CPUArchState *env, target_ulong addr,
                         uint8_t *buf, int len, int is_write);
 
