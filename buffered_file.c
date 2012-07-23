@@ -33,7 +33,6 @@ typedef struct QEMUFileBuffered
     size_t buffer_size;
     size_t buffer_capacity;
     QemuThread thread;
-    bool complete;
 } QEMUFileBuffered;
 
 #ifdef DEBUG_BUFFERED_FILE
@@ -162,7 +161,7 @@ static int buffered_close(void *opaque)
         ret = ret2;
     }
     ret = migrate_fd_close(s->migration_state);
-    s->complete = true;
+    s->migration_state->complete = true;
     return ret;
 }
 
@@ -224,7 +223,7 @@ static void *buffered_file_thread(void *opaque)
     while (true) {
         int64_t current_time = qemu_get_clock_ms(rt_clock);
 
-        if (s->complete) {
+        if (s->migration_state->complete) {
             break;
         }
         if (s->freeze_output) {
@@ -247,7 +246,7 @@ static void *buffered_file_thread(void *opaque)
     return NULL;
 }
 
-QEMUFile *qemu_fopen_ops_buffered(MigrationState *migration_state)
+void qemu_fopen_ops_buffered(MigrationState *migration_state)
 {
     QEMUFileBuffered *s;
 
@@ -255,15 +254,15 @@ QEMUFile *qemu_fopen_ops_buffered(MigrationState *migration_state)
 
     s->migration_state = migration_state;
     s->xfer_limit = migration_state->bandwidth_limit / 10;
-    s->complete = false;
+    s->migration_state->complete = false;
 
     s->file = qemu_fopen_ops(s, buffered_put_buffer, NULL,
                              buffered_close, buffered_rate_limit,
                              buffered_set_rate_limit,
 			     buffered_get_rate_limit);
 
+    migration_state->file = s->file;
+
     qemu_thread_create(&s->thread, buffered_file_thread, s,
                        QEMU_THREAD_DETACHED);
-
-    return s->file;
 }
