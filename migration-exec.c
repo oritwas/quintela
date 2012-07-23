@@ -76,8 +76,6 @@ int exec_start_outgoing_migration(MigrationState *s, const char *command)
         goto err_after_open;
     }
 
-    socket_set_nonblock(s->fd);
-
     s->opaque = qemu_popen(f, "w");
 
     s->close = exec_close;

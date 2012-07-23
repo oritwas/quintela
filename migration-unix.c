@@ -96,8 +96,6 @@ int unix_start_outgoing_migration(MigrationState *s, const char *path)
         return -errno;
     }
 
-    socket_set_nonblock(s->fd);
-
     do {
         ret = connect(s->fd, (struct sockaddr *)&addr, sizeof(addr));
         if (ret == -1) {
