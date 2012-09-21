@@ -340,18 +340,24 @@ bool migrate_fd_put_ready(MigrationState *s, uint64_t max_size)
         DPRINTF("done iterating\n");
         start_time = qemu_get_clock_ms(rt_clock);
         qemu_system_wakeup_request(QEMU_WAKEUP_REASON_OTHER);
+        end_time = qemu_get_clock_ms(rt_clock);
+        printf("wakeup_request %ld\n", end_time - start_time);
         if (old_vm_running) {
             vm_stop(RUN_STATE_FINISH_MIGRATE);
         } else {
             vm_stop_force_state(RUN_STATE_FINISH_MIGRATE);
         }
-
+        end_time = qemu_get_clock_ms(rt_clock);
+        printf("vm_stop 2 %ld\n", end_time - start_time);
         if (qemu_savevm_state_complete(s->file) < 0) {
             migrate_fd_error(s);
         } else {
+            end_time = qemu_get_clock_ms(rt_clock);
+            printf("complete without error 3a %ld\n", end_time - start_time);
             migrate_fd_completed(s);
         }
         end_time = qemu_get_clock_ms(rt_clock);
+        printf("completed %ld\n", end_time - start_time);
         s->total_time = end_time - s->total_time;
         s->downtime = end_time - start_time;
         if (s->state != MIG_STATE_COMPLETED) {
@@ -359,6 +365,8 @@ bool migrate_fd_put_ready(MigrationState *s, uint64_t max_size)
                 vm_start();
             }
         }
+        end_time = qemu_get_clock_ms(rt_clock);
+        printf("end completed stage %ld\n", end_time - start_time);
         last_round = true;
     }
     qemu_mutex_unlock_iothread();

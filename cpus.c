@@ -439,14 +439,31 @@ int cpu_is_stopped(CPUArchState *env)
 
 static void do_vm_stop(RunState state)
 {
+    int64_t start_time, end_time;
+
     if (runstate_is_running()) {
+        start_time = qemu_get_clock_ms(rt_clock);
         cpu_disable_ticks();
+        end_time = qemu_get_clock_ms(rt_clock);
+        printf("time cpu_disable_ticks %ld\n", end_time - start_time);
         pause_all_vcpus();
+        end_time = qemu_get_clock_ms(rt_clock);
+        printf("time pause_all_vcpus %ld\n", end_time - start_time);
         runstate_set(state);
+        end_time = qemu_get_clock_ms(rt_clock);
+        printf("time runstate_set %ld\n", end_time - start_time);
         vm_state_notify(0, state);
+        end_time = qemu_get_clock_ms(rt_clock);
+        printf("time vmstate_notify %ld\n", end_time - start_time);
         bdrv_drain_all();
+        end_time = qemu_get_clock_ms(rt_clock);
+        printf("time bdrv_drain_all %ld\n", end_time - start_time);
         bdrv_flush_all();
+        end_time = qemu_get_clock_ms(rt_clock);
+        printf("time bdrv_flush_all %ld\n", end_time - start_time);
         monitor_protocol_event(QEVENT_STOP, NULL);
+        end_time = qemu_get_clock_ms(rt_clock);
+        printf("time monitor_protocol_event %ld\n", end_time - start_time);
     }
 }
 

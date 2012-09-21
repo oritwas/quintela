@@ -2269,9 +2269,15 @@ int bdrv_get_flags(BlockDriverState *bs)
 void bdrv_flush_all(void)
 {
     BlockDriverState *bs;
+    int64_t start_time, end_time;
+
+    start_time = qemu_get_clock_ms(rt_clock);
 
     QTAILQ_FOREACH(bs, &bdrv_states, list) {
         bdrv_flush(bs);
+        end_time = qemu_get_clock_ms(rt_clock);
+        printf("time flush device %s: %ld\n", bs->filename,
+               end_time - start_time);
     }
 }
 

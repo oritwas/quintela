@@ -1629,9 +1629,14 @@ int qemu_savevm_state_complete(QEMUFile *f)
 {
     SaveStateEntry *se;
     int ret;
+    int64_t t1;
+    int64_t t0 = qemu_get_clock_ms(rt_clock);
 
     cpu_synchronize_all_states();
+    t1 = qemu_get_clock_ms(rt_clock);
+    printf("synchronize_all_states %ld\n", t1 - t0);
 
+    t0 = t1;
     QTAILQ_FOREACH(se, &savevm_handlers, entry) {
         if (!se->ops || !se->ops->save_live_complete) {
             continue;
@@ -1652,6 +1657,11 @@ int qemu_savevm_state_complete(QEMUFile *f)
             return ret;
         }
     }
+    t1 = qemu_get_clock_ms(rt_clock);
+
+    printf("migrate RAM %ld\n", t1 - t0);
+
+    t0 = t1;
 
     QTAILQ_FOREACH(se, &savevm_handlers, entry) {
         int len;
@@ -1676,6 +1686,9 @@ int qemu_savevm_state_complete(QEMUFile *f)
         trace_savevm_section_end(se->section_id);
     }
 
+    t1 = qemu_get_clock_ms(rt_clock);
+
+    printf("migrate rest devices %ld\n", t1 - t0);
     qemu_put_byte(f, QEMU_VM_EOF);
 
     return qemu_file_get_error(f);
