@@ -300,16 +300,18 @@ ssize_t migrate_fd_put_buffer(MigrationState *s, const void *data,
     return ret;
 }
 
-void migrate_fd_put_ready(MigrationState *s)
+bool migrate_fd_put_ready(MigrationState *s, uint64_t max_size)
 {
     int ret;
     static bool first_time = true;
+    uint64_t pending_size;
+    bool last_round = false;
 
     qemu_mutex_lock_iothread();
     if (s->state != MIG_STATE_ACTIVE) {
         DPRINTF("put_ready returning because of non-active state\n");
         qemu_mutex_unlock_iothread();
-        return;
+        return false;
     }
     if (first_time) {
         first_time = false;
@@ -319,15 +321,19 @@ void migrate_fd_put_ready(MigrationState *s)
             DPRINTF("failed, %d\n", ret);
             migrate_fd_error(s);
             qemu_mutex_unlock_iothread();
-            return;
+            return false;
         }
     }
 
     DPRINTF("iterate\n");
-    ret = qemu_savevm_state_iterate(s->file);
-    if (ret < 0) {
-        migrate_fd_error(s);
-    } else if (ret == 1) {
+    pending_size = qemu_savevm_state_pending(s->file, max_size);
+    DPRINTF("pending size %lu max %lu\n", pending_size, max_size);
+    if (pending_size >= max_size) {
+        ret = qemu_savevm_state_iterate(s->file);
+        if (ret < 0) {
+            migrate_fd_error(s);
+        }
+    } else {
         int old_vm_running = runstate_is_running();
         int64_t start_time, end_time;
 
@@ -353,9 +359,11 @@ void migrate_fd_put_ready(MigrationState *s)
                 vm_start();
             }
         }
+        last_round = true;
     }
     qemu_mutex_unlock_iothread();
 
+    return last_round;
 }
 
 static void migrate_fd_cancel(MigrationState *s)
