@@ -425,16 +425,18 @@ static int ram_save_block(QEMUFile *f, bool last_stage)
 {
     RAMBlock *block = last_block;
     ram_addr_t offset = last_offset;
+    unsigned int skip = 0;
     int bytes_sent = -1;
     MemoryRegion *mr;
     ram_addr_t current_addr;
+    bool completed_circle = false;
 
     if (!block)
         block = QLIST_FIRST(&ram_list.blocks);
 
     do {
         mr = block->mr;
-        if (migration_bitmap_test_and_reset_dirty(mr, offset)) {
+        if (migration_bitmap_test_and_reset_dirty(mr, offset, &skip)) {
             uint8_t *p;
             int cont = (block == last_block) ? RAM_SAVE_FLAG_CONTINUE : 0;
 
@@ -468,14 +470,18 @@ static int ram_save_block(QEMUFile *f, bool last_stage)
             }
         }
 
-        offset += TARGET_PAGE_SIZE;
+        offset += skip * TARGET_PAGE_SIZE;        
         if (offset >= block->length) {
             offset = 0;
             block = QLIST_NEXT(block, next);
-            if (!block)
+            if (!block) {
                 block = QLIST_FIRST(&ram_list.blocks);
+                completed_circle = true;
+            }
         }
-    } while (block != last_block || offset != last_offset);
+
+    } while (!completed_circle &&
+             !(block == last_block &&  offset >= last_offset));
 
     last_block = block;
     last_offset = offset;
