@@ -562,13 +562,15 @@ static void reset_ram_globals(void)
 }
 
 #define MAX_WAIT 50 /* ms, half buffered_file limit */
+#define ALIGN(x, y)  (((x)+(y)-1) & ~((y)-1))
 
 static int ram_save_setup(QEMUFile *f, void *opaque)
 {
     RAMBlock *block;
     int64_t ram_pages = last_ram_offset() >> TARGET_PAGE_BITS;
+    int64_t aligned_pages = ALIGN(ram_pages, BITS_PER_LONG);
 
-    migration_bitmap = bitmap_new(ram_pages);
+    migration_bitmap = bitmap_new(aligned_pages);
     bitmap_set(migration_bitmap, 0, ram_pages);
     migration_dirty_pages = ram_pages;
 
