@@ -339,13 +339,19 @@ static uint64_t migration_dirty_pages;
 static uint32_t last_version;
 
 static inline bool migration_bitmap_test_and_reset_dirty(MemoryRegion *mr,
-                                                         ram_addr_t offset)
+                                                         ram_addr_t offset,
+                                                         unsigned int *skip)
 {
     bool ret;
-    int nr = (mr->ram_addr + offset) >> TARGET_PAGE_BITS;
+    unsigned int nr = (mr->ram_addr + offset) >> TARGET_PAGE_BITS;
+    unsigned int index = nr % BITS_PER_LONG;
+    unsigned long *p = migration_bitmap + BIT_WORD(nr);
+    unsigned long bit = *p & BIT_MASK(nr);
+    unsigned long left = (*p ^ bit) >> index;
+
+    *skip = left ? ffsl(left) - 1 : BITS_PER_LONG - index;    
 
     ret = test_and_clear_bit(nr, migration_bitmap);
-
     if (ret) {
         migration_dirty_pages--;
     }
