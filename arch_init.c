@@ -333,6 +333,7 @@ static int save_xbzrle_page(QEMUFile *f, uint8_t *current_data,
 }
 
 static RAMBlock *last_block;
+static RAMBlock *last_sent_block;
 static ram_addr_t last_offset;
 static unsigned long *migration_bitmap;
 static uint64_t migration_dirty_pages;
@@ -430,7 +431,7 @@ static int ram_save_block(QEMUFile *f, bool last_stage)
         mr = block->mr;
         if (migration_bitmap_test_and_reset_dirty(mr, offset)) {
             uint8_t *p;
-            int cont = (block == last_block) ? RAM_SAVE_FLAG_CONTINUE : 0;
+            int cont = (block == last_sent_block) ? RAM_SAVE_FLAG_CONTINUE : 0;
 
             p = memory_region_get_ram_ptr(mr) + offset;
 
@@ -458,6 +459,7 @@ static int ram_save_block(QEMUFile *f, bool last_stage)
 
             /* if page is unmodified, continue to the next */
             if (bytes_sent != 0) {
+                last_sent_block = block;
                 break;
             }
         }
@@ -469,6 +471,12 @@ static int ram_save_block(QEMUFile *f, bool last_stage)
             if (!block)
                 block = QLIST_FIRST(&ram_list.blocks);
         }
+
+        /* check rate limit if we sent a page */
+        if (bytes_sent > 0) {
+            break;
+        }
+
     } while (block != last_block || offset != last_offset);
 
     last_block = block;
