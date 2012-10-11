@@ -464,10 +464,8 @@ static int ram_save_block(QEMUFile *f, bool last_stage)
                 acct_info.norm_pages++;
             }
 
-        /* if page is unmodified, continue to the next */
             if (bytes_sent != 0) {
                 last_sent_block = block;
-                break;
             }
         }
 
@@ -480,6 +478,11 @@ static int ram_save_block(QEMUFile *f, bool last_stage)
                 completed_circle = true;
             }
         }
+        /* if page is unmodified, continue to the next */
+        if (bytes_sent > 0) {
+            break;
+        }
+
     } while (!completed_circle &&
              !(block == last_block &&  offset >= last_offset));
 
