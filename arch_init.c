@@ -333,6 +333,7 @@ static int save_xbzrle_page(QEMUFile *f, uint8_t *current_data,
 }
 
 static RAMBlock *last_block;
+static RAMBlock *last_sent_block;
 static ram_addr_t last_offset;
 static unsigned long *migration_bitmap;
 static uint64_t migration_dirty_pages;
@@ -438,8 +439,7 @@ static int ram_save_block(QEMUFile *f, bool last_stage)
         mr = block->mr;
         if (migration_bitmap_test_and_reset_dirty(mr, offset, &skip)) {
             uint8_t *p;
-            int cont = (block == last_block) ? RAM_SAVE_FLAG_CONTINUE : 0;
-
+            int cont = (block == last_sent_block) ? RAM_SAVE_FLAG_CONTINUE : 0;
             p = memory_region_get_ram_ptr(mr) + offset;
 
             if (is_dup_page(p)) {
@@ -464,8 +464,9 @@ static int ram_save_block(QEMUFile *f, bool last_stage)
                 acct_info.norm_pages++;
             }
 
-            /* if page is unmodified, continue to the next */
+        /* if page is unmodified, continue to the next */
             if (bytes_sent != 0) {
+                last_sent_block = block;
                 break;
             }
         }
@@ -479,7 +480,6 @@ static int ram_save_block(QEMUFile *f, bool last_stage)
                 completed_circle = true;
             }
         }
-
     } while (!completed_circle &&
              !(block == last_block &&  offset >= last_offset));
 
@@ -567,6 +567,7 @@ static void ram_migration_cancel(void *opaque)
 
 static void reset_ram_globals(void)
 {
+    last_sent_block = NULL;
     last_block = NULL;
     last_offset = 0;
     last_version = ram_list.version;
