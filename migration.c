@@ -328,7 +328,7 @@ bool migrate_fd_put_ready(MigrationState *s, uint64_t max_size)
     DPRINTF("iterate\n");
     pending_size = qemu_savevm_state_pending(s->file, max_size);
     DPRINTF("pending size %lu max %lu\n", pending_size, max_size);
-    if (pending_size >= max_size) {
+    if (pending_size && pending_size >= max_size) {
         ret = qemu_savevm_state_iterate(s->file);
         if (ret < 0) {
             migrate_fd_error(s);
