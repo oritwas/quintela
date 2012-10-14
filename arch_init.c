@@ -339,6 +339,14 @@ static unsigned long *migration_bitmap;
 static uint64_t migration_dirty_pages;
 static uint32_t last_version;
 
+static inline unsigned int migration_get_skip(MemoryRegion *mr,
+                                              ram_addr_t offset)
+{
+    int nr = (mr->ram_addr + offset) >> TARGET_PAGE_BITS;
+
+    return get_next_set_bit_distance(nr, migration_bitmap);
+}
+
 static inline bool migration_bitmap_test_and_reset_dirty(MemoryRegion *mr,
                                                          ram_addr_t offset)
 {
@@ -463,7 +471,7 @@ static int ram_save_block(QEMUFile *f, bool last_stage)
             }
         }
 
-        offset += TARGET_PAGE_SIZE;
+        offset += migration_get_skip(mr, offset) * TARGET_PAGE_SIZE;
         if (offset >= block->length) {
             offset = 0;
             block = QLIST_NEXT(block, next);
