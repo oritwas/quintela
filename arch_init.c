@@ -460,7 +460,6 @@ static int ram_save_block(QEMUFile *f, bool last_stage)
             /* if page is unmodified, continue to the next */
             if (bytes_sent != 0) {
                 last_sent_block = block;
-                break;
             }
         }
 

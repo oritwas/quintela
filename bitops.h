@@ -178,6 +178,7 @@ static inline int test_and_clear_bit(int nr, unsigned long *addr)
 	return (old & mask) != 0;
 }
 
+
 /**
  * test_and_change_bit - Change a bit and return its old value
  * @nr: Bit to change
@@ -201,6 +202,23 @@ static inline int test_and_change_bit(int nr, unsigned long *addr)
 static inline int test_bit(int nr, const unsigned long *addr)
 {
 	return 1UL & (addr[BIT_WORD(nr)] >> (nr & (BITS_PER_LONG-1)));
+}
+
+/**
+ * get_next_set_bit_distance - return the number of bit to skip in the 64bit
+ *                             word
+ * @nr: bit number to test
+ * @addr: Address to start counting from
+ */
+static inline unsigned int get_next_set_bit_distance(int nr,
+                                                     unsigned long *addr)
+{
+    unsigned int index = nr % BITS_PER_LONG;
+    unsigned long *p = addr + BIT_WORD(nr);
+    unsigned long bit = BIT_MASK(nr);
+    unsigned long left = (*p & ~bit) >> index;
+
+    return left ? ffsl(left) - 1 : BITS_PER_LONG - index;
 }
 
 /**
