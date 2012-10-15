@@ -393,7 +393,8 @@ static void migration_bitmap_sync(void)
     memory_global_sync_dirty_bitmap(get_system_memory());
 
     QLIST_FOREACH(block, &ram_list.blocks, next) {
-        for (addr = 0; addr < block->length; addr += TARGET_PAGE_SIZE) {
+        for (addr = 0; addr < block->length;
+             addr += migration_get_skip(block->mr, addr) * TARGET_PAGE_SIZE) {
             if (memory_region_get_dirty(block->mr, addr, TARGET_PAGE_SIZE,
                                         DIRTY_MEMORY_MIGRATION)) {
                 migration_bitmap_set_dirty(block->mr, addr);
